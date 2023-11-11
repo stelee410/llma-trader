@@ -6,13 +6,60 @@ from config import api_key, cached_folder
 
 openai.api_key = api_key
 
+
+def get_openai_response_func(prompt, action_list = []):
+    functions = [
+        {
+            "name": "get_trading_action",
+            "description": "get the trading action",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": action_list, "description":"trading action"},
+                    "explain": {"type": "string", "description": "explain the action"}
+                },
+                "required": ["action"],
+            },
+        }
+    ] 
+    messages =[
+            {
+            "role": "system",
+            "content": prompt
+            },
+            {"role":"user","content":"what is your suggestion?"}
+    ]
+
+    retried = 0
+    while True:
+        sleep_time = (retried+1) * 3
+        time.sleep(sleep_time)
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo-16k",
+                messages= messages,
+                functions=functions,
+                function_call="auto",  # auto is default, but we'll be explicit
+            )
+            return response
+        except Exception as e:
+            if e.http_status == 503:
+                print(e)
+                print("retrying...")
+                retried += 1
+                if retried > 3:
+                    return None
+            else:
+                print(e)
+                return None
+
 def get_openai_response(prompt, feeds=None):
     messages =[
             {
             "role": "system",
             "content": prompt
             },
-            {"role":"user","content":"我刚开始建仓，寻求合适的买入或者不交易的建议，你的建议是什么？"}
+            {"role":"user","content":"which action to take?"}
     ]
     if feeds is not None:
         messages += feeds
@@ -20,7 +67,7 @@ def get_openai_response(prompt, feeds=None):
     while True:
         try:
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-16k",
+                model="gpt-4-1106-preview",
                 messages= messages,
                 temperature=0,
                 max_tokens=256,
@@ -53,7 +100,7 @@ def get_prompt(data_feeds,security_name, tickname):
       我在三个反括号里面引用的csv格式的最近交易数据。
       请你为客户提供股票买卖建议。
       只需要返回一个单词。
-      
+
         ```
         {data_feeds_str}
         ```

@@ -45,5 +45,19 @@ def five_d_trade(tickername, securityname, strategy='openai'):
     print("total completion_token: " + str(utils.completion_token))
     cerebro.plot()
 
+@cli.cmd()
+def future_trade(tickername, securityname, strategy='dry'):
+    tickername = tickername + "=F" #e.g. CL=F
+    cerebro = backtesting.run_future(strategy=strategy, 
+                              tickername=tickername,
+                              securityname=securityname,
+                              commission=1.25, #每手手续费
+                              margin=2000, #保证金
+                              mult=10 #一份合约规模
+                              )
+    print("total prompt_token: " + str(utils.prompt_token))
+    print("total completion_token: " + str(utils.completion_token))
+    cerebro.plot()
+
 if __name__ == '__main__':
     cli.run()
